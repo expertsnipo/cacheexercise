@@ -11,16 +11,21 @@ namespace CacheExercise
         bool cachehit = false, blockread = false, blockwritten = false;
         int linenumber = 0, blocknumberread, blocknumberwritten;
 
+        int S, E, B;
+
         Line[] lines;
 
-        public Set(int numLines, int blockSize)
-        {
+        public Set(int newS, int numLines, int blockSize)
+        {            
             lines = new Line[numLines];
             for (int i = 0; i < numLines; ++i)
             {
-                Line line = new Line(blockSize, i);
+                Line line = new Line(blockSize);
                 lines[i] = line;
             }
+            S = newS;
+            E = numLines;
+            B = blockSize;
 
         }
         public void resetStats()
@@ -33,7 +38,7 @@ namespace CacheExercise
             blocknumberwritten = 0;
         }
 
-        public bool lookup(bool write, short newtag)
+        public bool lookup(bool write, ushort addr, short newtag)
         {
             bool tagMatch = false;
             foreach (Line l in lines)
@@ -43,7 +48,7 @@ namespace CacheExercise
                     if (l.isValid())
                     {
                         // cache hit
-                        tagMatch = true;
+                        tagMatch = true;                        
                         if (write)
                         {
                             l.write();
@@ -64,6 +69,7 @@ namespace CacheExercise
                                 blockread = true;
 
                                 lines[j].read(newtag);
+                                lines[j].setBlockNumber(addr / B);
                                 linenumber = j;
                                 blocknumberread = lines[j].getBlockNumber();
                             }
@@ -83,7 +89,6 @@ namespace CacheExercise
                                 }
 
                             }
-
                             if (write)
                             {
                                 if (lines[winner].isDirty())
@@ -93,6 +98,7 @@ namespace CacheExercise
                                 }
                             }
                             lines[winner].read(newtag);
+                            lines[winner].setBlockNumber(addr / B);
                             blockread = true;
                             blocknumberread = lines[winner].getBlockNumber();
                             linenumber = winner;
@@ -113,6 +119,11 @@ namespace CacheExercise
                     {
                         needToEvict = false;
                         lines[i].read(newtag);
+                        lines[i].setBlockNumber(addr / B);
+                        if (write)
+                        {
+                            lines[i].write();
+                        }
                         blockread = true;
                         linenumber = i;
                         blocknumberread = lines[i].getBlockNumber();
@@ -141,14 +152,16 @@ namespace CacheExercise
                         {
                             blockwritten = true;
                             blocknumberwritten = lines[winner].getBlockNumber();
-                        }
+                        }                        
 
                     }
                     lines[winner].read(newtag);
+                    lines[winner].setBlockNumber(addr / B);
                     blockread = true;
                     linenumber = winner;
                     blocknumberread = lines[winner].getBlockNumber();
                 }
+                
             }
             return false;
         }
@@ -171,20 +184,21 @@ namespace CacheExercise
         short tag;
         DateTime lastUsed;
 
-        public Line(int blockSize, int newblocknumber)
+        public Line(int blockSize)
         {
             block = new byte[blockSize];
             valid = false;
             dirty = false;
             //empty = true;
             tag = 0;
-            blocknumber = newblocknumber;
+            
         }
 
         public short getTag() { return tag; }
         public bool isValid() { return valid; }
         public bool isDirty() { return dirty; }
         public int getBlockNumber() { return blocknumber; }
+        public void setBlockNumber(int newblocknumber) { blocknumber = newblocknumber; }
         //public bool isEmpty() { return empty; }
 
         // Load byte from memory into cache
@@ -225,19 +239,19 @@ namespace CacheExercise
             bool cachehit = false, blockread = false, blockwritten = false;
             int blocknumberread = 0, setnumber = 0, linenumber = 0, blocknumberwritten = 0;
 
-            string[] input = new string[100];
+            string[] input = new string[500];
             string line;
             int j = 0;
             while ((line = Console.ReadLine()) != null)
             {
-                if (j < 100)
+                if (j < 500)
                 {
                     input[j] = line;
                     ++j;
                 }
                 else
                 {
-                    Console.WriteLine("Too much input!");
+                    Console.WriteLine("Too much input! Program supports up to 500 lines.");
                     Environment.Exit(1);
                 }
             }
@@ -258,11 +272,11 @@ namespace CacheExercise
 
             for (int i = 0; i < S; ++i)
             {
-                Set set = new Set(E, B);
+                Set set = new Set(S, E, B);
                 cache[i] = set;
             }
 
-            for (int i = 0; i < 100; ++i)
+            for (int i = 0; i < 500; ++i)
             {
                 if (null == input[i])
                 {
@@ -271,11 +285,11 @@ namespace CacheExercise
                 // main loop
                 string[] curline = input[i].Split(' ');
                 string OP = "";
-                short addr = 0;
+                ushort addr = 0;
                 if (curline.Length > 1)
                 {
                     OP = curline[0];
-                    addr = (short)Convert.ToInt32(curline[1]);
+                    addr = (ushort)Convert.ToInt32(curline[1]);
                 }
                 else
                 {
@@ -310,20 +324,21 @@ namespace CacheExercise
                 sbits = (byte)((addr >> b) & (S-1));
 
                 // convert addr into block number
-                int blocknumber = addr / B;
+                //int blocknumber = addr / B;
 
                 // get current set
                 Set curSet = cache[sbits];
                 // check the valid bits and tag bits in the selected set
                 // ref bool blockread, ref int blocknumberread, ref int linenumber, ref bool blockwritten, ref int blocknumberwritten
-                cachehit = curSet.lookup(write, tbits);
+                cachehit = curSet.lookup(write, addr, tbits);
                 blockread = curSet.getBlockRead();
                 blockwritten = curSet.getBlockWritten();
+                linenumber = curSet.getLineNumber();
                 setnumber = sbits;
-                //blocknumberread = curSet.getBlockNumberRead();
-                //blocknumberwritten = curSet.getBlockNumberWritten();
+                blocknumberread = curSet.getBlockNumberRead();
+                blocknumberwritten = curSet.getBlockNumberWritten();
 
-                Console.WriteLine(String.Format("{0} {1} {2} {3} {4} {5} {6}", cachehit ? 1 : 0, blockread ? 1 : 0, blockread ? blocknumber.ToString() : "-", blockread ? setnumber.ToString() : "-", blockread ? linenumber.ToString() : "-", blockwritten ? 1 : 0, blockwritten ? blocknumber.ToString() : "-"));
+                Console.WriteLine(String.Format("{0} {1} {2} {3} {4} {5} {6}", cachehit ? 1 : 0, blockread ? 1 : 0, blockread ? blocknumberread.ToString() : "-", blockread ? setnumber.ToString() : "-", blockread ? linenumber.ToString() : "-", blockwritten ? 1 : 0, blockwritten ? blocknumberwritten.ToString() : "-"));
                 curSet.resetStats();
 
             }
