@@ -158,10 +158,6 @@ namespace CacheExercise
         public int getLineNumber() { return linenumber; }
         public int getBlockNumberRead() { return blocknumberread; }
         public int getBlockNumberWritten() { return blocknumberwritten; }
-
-
-
-
     }
 
     class Line
@@ -215,6 +211,10 @@ namespace CacheExercise
         static void Main(string[] args)
         {
             int S = 4, E = 2, B = 64;
+            int s, b, t;
+            int m = 16;
+            byte tbits, sbits, bbits;
+
             if (args.Length > 2)
             {
                 S = Convert.ToInt32(args[0]);
@@ -242,9 +242,10 @@ namespace CacheExercise
                 }
             }
 
-            byte tbits, sbits, bbits;
-            // t = 8, s = 2, b = 6
 
+            s = (int)Math.Log(S, 2);
+            b = (int)Math.Log(B, 2);
+            t = m - (s + b);
 
             // BUILD THE CACHE
             // need data size larger than byte for valid bit and tag bits            
@@ -303,10 +304,13 @@ namespace CacheExercise
 
                 // will change based on t, s, and b
                 // need to figure out how to make dynamic masks
-                tbits = (byte)((addr & 0xFF00) >> 8);
-                sbits = (byte)((addr & 0x00C0) >> 6);
-                bbits = (byte)((addr & 0x003F));
+                // tbits = shift by (s+b)
+                tbits = (byte)(addr >> (s+b));
+                bbits = (byte)((addr & (B - 1)));
+                sbits = (byte)((addr >> b) & (S-1));
 
+                // convert addr into block number
+                int blocknumber = addr / B;
 
                 // get current set
                 Set curSet = cache[sbits];
@@ -315,10 +319,11 @@ namespace CacheExercise
                 cachehit = curSet.lookup(write, tbits);
                 blockread = curSet.getBlockRead();
                 blockwritten = curSet.getBlockWritten();
-                blocknumberread = curSet.getBlockNumberRead();
-                blocknumberwritten = curSet.getBlockNumberWritten();
+                setnumber = sbits;
+                //blocknumberread = curSet.getBlockNumberRead();
+                //blocknumberwritten = curSet.getBlockNumberWritten();
 
-                Console.WriteLine(String.Format("{0} {1} {2} {3} {4} {5} {6}", cachehit ? 1 : 0, blockread ? 1 : 0, blockread ? blocknumberread.ToString() : "-", blockread ? setnumber.ToString() : "-", blockread ? linenumber.ToString() : "-", blockwritten ? 1 : 0, blockwritten ? blocknumberwritten.ToString() : "-"));
+                Console.WriteLine(String.Format("{0} {1} {2} {3} {4} {5} {6}", cachehit ? 1 : 0, blockread ? 1 : 0, blockread ? blocknumber.ToString() : "-", blockread ? setnumber.ToString() : "-", blockread ? linenumber.ToString() : "-", blockwritten ? 1 : 0, blockwritten ? blocknumber.ToString() : "-"));
                 curSet.resetStats();
 
             }
