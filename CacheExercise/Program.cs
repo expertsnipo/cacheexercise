@@ -8,6 +8,7 @@ namespace CacheExercise
 {
     class Set
     {
+        static int lastUsed = 0;
         bool cachehit = false, blockread = false, blockwritten = false;
         int linenumber = 0, blocknumberread, blocknumberwritten;
 
@@ -77,7 +78,8 @@ namespace CacheExercise
                         if (needToEvict)
                         {
                             // find least-recently used line and evict
-                            DateTime firsttime;
+                            //DateTime firsttime;
+                            int firsttime;
                             int winner = 0;
                             firsttime = lines[0].getLastUsed();
                             for (int i = 1; i < lines.Length; ++i)
@@ -133,7 +135,8 @@ namespace CacheExercise
                 if (needToEvict)
                 {
                     // find least-recently used line and evict
-                    DateTime firsttime;
+                    //DateTime firsttime;
+                    int firsttime;
                     int winner = 0;
                     firsttime = lines[0].getLastUsed();
                     for (int i = 1; i < lines.Length; ++i)
@@ -171,6 +174,7 @@ namespace CacheExercise
         public int getLineNumber() { return linenumber; }
         public int getBlockNumberRead() { return blocknumberread; }
         public int getBlockNumberWritten() { return blocknumberwritten; }
+        public static int getLastUsedCounter() { ++lastUsed; return lastUsed; }
     }
 
     class Line
@@ -182,7 +186,8 @@ namespace CacheExercise
         // valid should mean not empty
         //bool empty; 
         short tag;
-        DateTime lastUsed;
+        //DateTime lastUsed;
+        int lastUsed;
 
         public Line(int blockSize)
         {
@@ -206,7 +211,8 @@ namespace CacheExercise
         {
             //empty = false;
             valid = true;
-            lastUsed = DateTime.Now;
+            //lastUsed = DateTime.Now;
+            lastUsed = Set.getLastUsedCounter();
             tag = newtag;
             dirty = false;
         }
@@ -216,7 +222,8 @@ namespace CacheExercise
         {
             dirty = true;
         }
-        public DateTime getLastUsed() { return lastUsed; }
+        //public DateTime getLastUsed() { return lastUsed; }
+        public int getLastUsed() { return lastUsed; }
     }
 
 
